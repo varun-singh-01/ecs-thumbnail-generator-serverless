@@ -1,0 +1,1 @@
+# ecs-thumbnail-generator-serverless
