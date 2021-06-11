@@ -1,0 +1,13 @@
+ContainerDefinitions:
+  - Name: ${self:custom.cf-parameters.ServiceName}
+    Image: ${self:custom.cf-parameters.Image}
+    PortMappings:
+      - ContainerPort: ${self:custom.cf-parameters.ContainerPort}
+
+    # Send logs to CloudWatch Logs
+    LogConfiguration:
+      LogDriver: awslogs
+      Options:
+        awslogs-region: !Ref AWS::Region
+        awslogs-group: !Ref LogGroup
+        awslogs-stream-prefix: ecs

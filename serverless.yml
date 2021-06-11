@@ -1,0 +1,214 @@
+service: ecs-lambda-thumbnail-service
+frameworkVersion: "2"
+
+custom:
+  defaultStage: dev
+  defaultRegion: us-east-1
+  currentStage: ${opt:stage, self:custom.defaultStage}
+  cf-parameters:
+    ServiceName: ffmpeg-engine
+    ContainerPort: 8081
+    Image: talkhash/ffmpeg-thumbnail-generator:latest
+  thumbnails_folder: "proxy"
+  thumbnails_path: "ecs-bucket-7/proxy"
+  bucket:
+    name: !Ref Bucket
+    arn: !GetAtt Bucket.Arn
+  ecsTaskName:
+    name: !Ref TaskDefinition
+    arn: !GetAtt TaskDefinition.Arn
+  ecsTaskVpcSubnet1:
+    name: !Ref PublicSubnetOne
+    arn: !Ref PublicSubnetOne.arn
+  ecsTaskVpcSubnet2:
+    name: !Ref PublicSubnetTwo
+    arn: !Ref PublicSubnetTwo.arn
+  clusterName:
+    name: !Ref Cluster
+    arn: !Ref Cluster.arn
+  VpcId:
+    Description: The ID of the VPC that this stack is deployed in
+    Value: !Ref "VPC"
+    Export:
+      Name: !Sub ${ServiceName}:VpcId
+  PublicSubnetOne:
+    Description: Public subnet one
+    Value: !Ref "PublicSubnetOne"
+    Export:
+      Name: !Sub ${ServiceName}:PublicSubnetOne
+  PublicSubnetTwo:
+    Description: Public subnet two
+    Value: !Ref "PublicSubnetTwo"
+    Export:
+      Name: !Sub ${ServiceName}:PublicSubnetTwo
+  execRoleArn:
+    {
+      "Fn::Join":
+        [
+          "",
+          [
+            "arn:aws:iam::",
+            { "Ref": "AWS::AccountId" },
+            ":role/ecsTaskExecutionRole",
+          ],
+        ],
+    }
+
+provider:
+  name: aws
+  runtime: python2.7
+  lambdaHashingVersion: 20201221
+  stage: ${self:custom.defaultStage}
+  region: ${self:custom.defaultRegion}
+  environment:
+    ECS_CLUSTER_NAME: ${self:custom.clusterName.name}
+    ECS_TASK_DEFINITION: ${self:custom.ecsTaskName.name}
+    ECS_TASK_VPC_SUBNET_1: ${self:custom.ecsTaskVpcSubnet1.name}
+    ECS_TASK_VPC_SUBNET_2: ${self:custom.ecsTaskVpcSubnet2.name}
+    OUTPUT_S3_PATH: ${self:custom.thumbnails_path}
+    OUTPUT_S3_AWS_REGION: ${self:custom.defaultRegion}
+
+resources:
+  # Subnet Mappings
+  Mappings:
+    SubnetConfig:
+      VPC:
+        CIDR: "172.16.0.0/16"
+      PublicOne:
+        CIDR: "172.16.0.0/24"
+      PublicTwo:
+        CIDR: "172.16.1.0/24"
+
+  Resources:
+    LogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /ecs/${self:custom.cf-parameters.ServiceName}-task-definition
+    Cluster: ${file(resources/ECS/Cluster.yml):Cluster}
+    TaskDefinition: ${file(resources/ECS/TaskDefinition.yml):TaskDefinition}
+    Service: ${file(resources/ECS/Service.yml):FFMPEGService}
+
+    # Cluster resources
+    VPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        EnableDnsSupport: true
+        EnableDnsHostnames: true
+        CidrBlock: !FindInMap ["SubnetConfig", "VPC", "CIDR"]
+        Tags:
+          - Key: Name
+            Value: ecs-vpc # This will be the name of created VPC
+
+    PublicSubnetOne:
+      Type: AWS::EC2::Subnet
+      Properties:
+        AvailabilityZone:
+          Fn::Select:
+            - 0
+            - Fn::GetAZs: { Ref: "AWS::Region" }
+        VpcId: !Ref "VPC"
+        CidrBlock: !FindInMap ["SubnetConfig", "PublicOne", "CIDR"]
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: ecs-public-subnet-1 # This will be the name of created Subnet
+    PublicSubnetTwo:
+      Type: AWS::EC2::Subnet
+      Properties:
+        AvailabilityZone:
+          Fn::Select:
+            - 1
+            - Fn::GetAZs: { Ref: "AWS::Region" }
+        VpcId: !Ref "VPC"
+        CidrBlock: !FindInMap ["SubnetConfig", "PublicTwo", "CIDR"]
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: ecs-public-subnet-2
+
+    InternetGateway:
+      Type: AWS::EC2::InternetGateway
+    GatewayAttachement:
+      Type: AWS::EC2::VPCGatewayAttachment
+      Properties:
+        VpcId: !Ref "VPC"
+        InternetGatewayId: !Ref "InternetGateway"
+    PublicRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref "VPC"
+    PublicRoute:
+      Type: AWS::EC2::Route
+      DependsOn: GatewayAttachement
+      Properties:
+        RouteTableId: !Ref "PublicRouteTable"
+        DestinationCidrBlock: "0.0.0.0/0"
+        GatewayId: !Ref "InternetGateway"
+    PublicSubnetOneRouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref PublicSubnetOne
+        RouteTableId: !Ref PublicRouteTable
+    PublicSubnetTwoRouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref PublicSubnetTwo
+        RouteTableId: !Ref PublicRouteTable
+
+    # A role needed by ECS
+    ExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:custom.cf-parameters.ServiceName}-execution-role
+        AssumeRolePolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: ecs-tasks.amazonaws.com
+              Action: "sts:AssumeRole"
+        ManagedPolicyArns:
+          - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+
+    # A role for the containers
+    TaskRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:custom.cf-parameters.ServiceName}-task-role
+        AssumeRolePolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: ecs-tasks.amazonaws.com
+              Action: "sts:AssumeRole"
+    Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: Private
+        BucketName: ecs-bucket-7
+# functions:
+#   triggerOnUploadVideo:
+#     handler: ThumbnailHandler.triggerOnUploadVideo
+#     events:
+#       - s3:
+#           bucket: ${self:custom.bucket.name}
+#           event: s3:ObjectCreated:*
+#           rules:
+#             - suffix: .mp4
+#   triggerOnThumbnailCreation:
+#     handler: UploadListener.triggerOnThumbnailCreation
+#     events:
+#       - s3:
+#           bucket: ${self:custom.bucket.name}
+#           event: s3:ObjectCreated:*
+#           rules:
+#             - prefix: ${self:custom.thumbnails_folder}/
+#             - suffix: .png
+
+# you can add packaging information here
+#package:
+#  patterns:
+#    - '!exclude-me.py'
+#    - '!exclude-me-dir/**'
+#    - include-me.py
+#    - include-me-dir/**
+

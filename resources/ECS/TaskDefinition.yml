@@ -1,0 +1,12 @@
+TaskDefinition:
+  Type: AWS::ECS::TaskDefinition
+  Properties:
+    Family: ${self:custom.cf-parameters.ServiceName}-task-definition
+    NetworkMode: awsvpc
+    RequiresCompatibilities:
+      - FARGATE
+    Cpu: "256"
+    Memory: 0.5GB
+    ExecutionRoleArn: !Ref ExecutionRole
+    TaskRoleArn: !Ref TaskRole
+    ContainerDefinitions: ${file(resources/ECS/ContainerDefinitions.yml):ContainerDefinitions}

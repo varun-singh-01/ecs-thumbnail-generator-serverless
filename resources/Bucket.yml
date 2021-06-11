@@ -1,0 +1,5 @@
+Bucket:
+  Type: AWS::S3::Bucket
+  Properties:
+    AccessControl: Private
+    BucketName: ecs-bucket-7
