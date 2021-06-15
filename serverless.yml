@@ -8,15 +8,15 @@ custom:
   cf-parameters:
     ServiceName: ffmpeg-engine
     ContainerPort: 8081
-    Image: talkhash/ffmpeg-thumbnail-generator:latest
+    Image: jrottenberg/ffmpeg
   thumbnails_folder: "proxy"
-  thumbnails_path: "ecs-bucket-7/proxy"
+  thumbnails_path: "ecs-bucket-8/proxy"
   bucket:
     name: !Ref Bucket
     arn: !GetAtt Bucket.Arn
   ecsTaskName:
-    name: !Ref TaskDefinition
-    arn: !GetAtt TaskDefinition.Arn
+    name: !Ref ECSTaskDefinition
+    arn: !GetAtt ECSTaskDefinition.Arn
   ecsTaskVpcSubnet1:
     name: !Ref PublicSubnetOne
     arn: !Ref PublicSubnetOne.arn
@@ -85,7 +85,7 @@ resources:
       Properties:
         LogGroupName: /ecs/${self:custom.cf-parameters.ServiceName}-task-definition
     Cluster: ${file(resources/ECS/Cluster.yml):Cluster}
-    TaskDefinition: ${file(resources/ECS/TaskDefinition.yml):TaskDefinition}
+    ECSTaskDefinition: ${file(resources/ECS/TaskDefinition.yml):ECSTaskDefinition}
     Service: ${file(resources/ECS/Service.yml):FFMPEGService}
 
     # Cluster resources
@@ -99,6 +99,7 @@ resources:
           - Key: Name
             Value: ecs-vpc # This will be the name of created VPC
 
+    # Public Subnets
     PublicSubnetOne:
       Type: AWS::EC2::Subnet
       Properties:
@@ -126,6 +127,7 @@ resources:
           - Key: Name
             Value: ecs-public-subnet-2
 
+    # Internet Gateway & Attachment
     InternetGateway:
       Type: AWS::EC2::InternetGateway
     GatewayAttachement:
@@ -133,6 +135,8 @@ resources:
       Properties:
         VpcId: !Ref "VPC"
         InternetGatewayId: !Ref "InternetGateway"
+
+    # Route Config
     PublicRouteTable:
       Type: AWS::EC2::RouteTable
       Properties:
@@ -144,6 +148,8 @@ resources:
         RouteTableId: !Ref "PublicRouteTable"
         DestinationCidrBlock: "0.0.0.0/0"
         GatewayId: !Ref "InternetGateway"
+
+    # Public Subnets Association
     PublicSubnetOneRouteTableAssociation:
       Type: AWS::EC2::SubnetRouteTableAssociation
       Properties:
@@ -154,6 +160,9 @@ resources:
       Properties:
         SubnetId: !Ref PublicSubnetTwo
         RouteTableId: !Ref PublicRouteTable
+
+    # Security Group
+    WebAccessSecurityGroup: ${file(resources/SecurityGroup.yml):WebAccessSecurityGroup}
 
     # A role needed by ECS
     ExecutionRole:
@@ -180,35 +189,40 @@ resources:
               Principal:
                 Service: ecs-tasks.amazonaws.com
               Action: "sts:AssumeRole"
-    Bucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        AccessControl: Private
-        BucketName: ecs-bucket-7
-# functions:
-#   triggerOnUploadVideo:
-#     handler: ThumbnailHandler.triggerOnUploadVideo
-#     events:
-#       - s3:
-#           bucket: ${self:custom.bucket.name}
-#           event: s3:ObjectCreated:*
-#           rules:
-#             - suffix: .mp4
-#   triggerOnThumbnailCreation:
-#     handler: UploadListener.triggerOnThumbnailCreation
-#     events:
-#       - s3:
-#           bucket: ${self:custom.bucket.name}
-#           event: s3:ObjectCreated:*
-#           rules:
-#             - prefix: ${self:custom.thumbnails_folder}/
-#             - suffix: .png
 
-# you can add packaging information here
-#package:
-#  patterns:
-#    - '!exclude-me.py'
-#    - '!exclude-me-dir/**'
-#    - include-me.py
-#    - include-me-dir/**
+    # S3 Bucket
+    # Bucket: ${file(resources/Bucket.yml):ECSBucket}
+    # BucketPolicy:
+    #   Type: AWS::S3::BucketPolicy
+    #   Properties:
+    #     Bucket: !Ref Bucket
+    #     PolicyDocument:
+    #       Statement:
+    #         - Action:
+    #             - "s3:GetObject"
+    #           Effect: Allow
+    #           Resource: !Join
+    #             - ""
+    #             - - "arn:aws:s3:::"
+    #               - !Ref Bucket
+    #               - /*
+    #           Principal: "*"
+functions:
+  triggerOnUploadVideo:
+    handler: handler.triggerOnUploadVideo
+    events:
+      - s3:
+          bucket: ecs-bucket-8
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: .mxf
+# triggerOnThumbnailCreation:
+#   handler: UploadListener.triggerOnThumbnailCreation
+#   events:
+#     - s3:
+#         bucket: !Ref Bucket
+#         event: s3:ObjectCreated:*
+#         rules:
+#           - prefix: ${self:custom.thumbnails_folder}/
+#           - suffix: .png
 

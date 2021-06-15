@@ -1,5 +1,16 @@
-Bucket:
+ECSBucket:
   Type: AWS::S3::Bucket
   Properties:
-    AccessControl: Private
-    BucketName: ecs-bucket-7
+    AccessControl: PublicRead
+    BucketName: ecs-bucket-8
+    CorsConfiguration:
+      CorsRules:
+        - AllowedMethods:
+            - PUT
+            - GET
+            - POST
+            - HEAD
+          AllowedOrigins:
+            - "*"
+          AllowedHeaders:
+            - "*"

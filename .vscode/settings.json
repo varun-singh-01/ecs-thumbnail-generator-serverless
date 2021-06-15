@@ -1,0 +1,19 @@
+{
+    "serverlessConsole.services": [
+        {
+            "type": "cloudformation",
+            "title": "CloudFormation",
+            "timeOffsetInMs": 0,
+            "awsProfile": "default",
+            "stacks": [
+                {
+                    "region": "us-east-1",
+                    "stackName": "ecs-lambda-thumbnail-service-dev",
+                    "stage": "dev"
+                }
+            ]
+        }
+    ],
+    "serverlessConsole.autoRefreshInterval": 5000,
+    "serverlessConsole.groupPerRequest": false
+}

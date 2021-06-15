@@ -1,4 +1,4 @@
-TaskDefinition:
+ECSTaskDefinition:
   Type: AWS::ECS::TaskDefinition
   Properties:
     Family: ${self:custom.cf-parameters.ServiceName}-task-definition

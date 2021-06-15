@@ -6,3 +6,13 @@ FFMPEGService:
     #     Base: 1
     #     CapacityProvider: ffmpeg-capacity-provider
     Cluster: !Ref Cluster
+    TaskDefinition: !Ref ECSTaskDefinition
+    LaunchType: FARGATE
+    NetworkConfiguration:
+      AwsvpcConfiguration:
+        AssignPublicIp: ENABLED
+        SecurityGroups:
+          - !Ref WebAccessSecurityGroup
+        Subnets:
+          - !Ref PublicSubnetOne
+          - !Ref PublicSubnetTwo
