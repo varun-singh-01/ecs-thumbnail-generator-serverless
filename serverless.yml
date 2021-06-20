@@ -190,6 +190,15 @@ resources:
               Action: "sts:AssumeRole"
         ManagedPolicyArns:
           - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        Policies:
+          - PolicyName: ecsIamPass
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - iam:PassRole
+                  Resource: "*"
 
     # A role for the containers
     TaskRole:
@@ -203,23 +212,6 @@ resources:
                 Service: ecs-tasks.amazonaws.com
               Action: "sts:AssumeRole"
 
-    # S3 Bucket
-    # Bucket: ${file(resources/Bucket.yml):ECSBucket}
-    # BucketPolicy:
-    #   Type: AWS::S3::BucketPolicy
-    #   Properties:
-    #     Bucket: !Ref Bucket
-    #     PolicyDocument:
-    #       Statement:
-    #         - Action:
-    #             - "s3:GetObject"
-    #           Effect: Allow
-    #           Resource: !Join
-    #             - ""
-    #             - - "arn:aws:s3:::"
-    #               - !Ref Bucket
-    #               - /*
-    #           Principal: "*"
 functions:
   triggerOnUploadVideo:
     handler: handler.triggerOnUploadVideo

@@ -7,6 +7,6 @@ ECSTaskDefinition:
       - FARGATE
     Cpu: "256"
     Memory: 0.5GB
-    ExecutionRoleArn: !Ref ExecutionRole
-    TaskRoleArn: !Ref TaskRole
+    ExecutionRoleArn: ${self:custom.execRoleArn}
+    TaskRoleArn: ${self:custom.execRoleArn}
     ContainerDefinitions: ${file(resources/ECS/ContainerDefinitions.yml):ContainerDefinitions}
