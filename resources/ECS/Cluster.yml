@@ -2,8 +2,3 @@ Cluster:
   Type: AWS::ECS::Cluster
   Properties:
     ClusterName: ${self:custom.cf-parameters.ServiceName}-cluster
-    # CapacityProviders:
-    #   - FARGATE
-    # DefaultCapacityProviderStrategy:
-    #   - CapacityProvider: FARGATE
-    #     Weight: 1

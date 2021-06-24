@@ -39,7 +39,7 @@ def triggerOnUploadVideo(event, context):
     }, overrides={
         'containerOverrides': [
             {
-                'name': 'ffmpeg-thumb',
+                'name': 'ffmpeg-engine',
                 'environment': [
                         {
                             'name': 'INPUT_VIDEO_FILE_URL',

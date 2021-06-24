@@ -2,9 +2,6 @@ FFMPEGService:
   Type: AWS::ECS::Service
   Properties:
     ServiceName: ${self:custom.cf-parameters.ServiceName}-thumbnail-service
-    # CapacityProviderStrategy:
-    #     Base: 1
-    #     CapacityProvider: ffmpeg-capacity-provider
     Cluster: !Ref Cluster
     TaskDefinition: !Ref ECSTaskDefinition
     LaunchType: FARGATE
