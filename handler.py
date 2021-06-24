@@ -20,7 +20,7 @@ def triggerOnUploadVideo(event, context):
     # Prepare processing details
     s3_video_url = '{}{}'.format(BASE_URL, key)
     thumbnail_file_name = '{}.png'.format(key.split('.')[0])
-    frame_pos = '2'
+    frame_pos = '00:02'
 
     # run an ECS Fargate task
     response = ecs_client.run_task(cluster=os.environ['ECS_CLUSTER_NAME'],

@@ -11,3 +11,15 @@ ContainerDefinitions:
         awslogs-region: !Ref AWS::Region
         awslogs-group: !Ref LogGroup
         awslogs-stream-prefix: ecs
+
+    Environment:
+      - Name: AWS_REGION
+        Value: ${self:custom.defaultRegion}
+      - Name: INPUT_VIDEO_FILE_URL
+        Value: "https://ecs-bucket-8.s3.amazonaws.com/sample_1280x720.mxf"
+      - Name: OUTPUT_S3_PATH
+        Value: ${self:custom.thumbnails_path}
+      - Name: OUTPUT_THUMBS_FILE_NAME
+        Value: "test.png"
+      - Name: POSITION_TIME_DURATION
+        Value: "00:01"
